@@ -118,6 +118,27 @@ def test_jobs_detail_extracts_posting_fields():
     assert listing.published_at is not None
 
 
+def test_jobs_detail_reads_dom_when_jsonld_is_gone():
+    """August 2026: finn.no stopped shipping JobPosting on job ads.
+
+    The fixture is the real page as served then — only BreadcrumbList is left,
+    so everything asserted below comes from the DOM. Without this path every
+    job listing came back with description=None while the text sat in the
+    markup, and callers could not tell an empty ad from a failed read.
+    """
+    html = read_fixture("jobs_ad_no_jsonld.html")
+    assert find_by_type(extract_jsonld(html), "JobPosting") is None
+
+    listing = get_scraper("jobs").parse_detail("472381832", html)
+    assert listing.description and len(listing.description) > 1000
+    # Lists carry the requirements — they have to survive as markup.
+    assert "<li" in listing.description
+    assert listing.title == "KI - Utviklar"
+    assert listing.seller and listing.seller.get("name") == "Nordea Liv"
+    assert listing.location == "Bergen"
+    assert listing.attributes.get("deadline") == "15.8.2026"
+
+
 # ---------- jsonld helpers ----------
 
 def test_jsonld_unwraps_wrapped_jobs_blocks():
